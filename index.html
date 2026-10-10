@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minecraft AI Bot Builder</title>
+<style>
+:root{font-family:system-ui,Arial,sans-serif;color-scheme:dark}body{margin:0;background:#0c1322;color:#f0f4ff}main{max-width:520px;margin:48px auto;padding:24px;background:#17243a;border-radius:18px;box-shadow:0 10px 35px #0004}h1{font-size:25px}label{display:block;margin-top:14px}input,select,button{box-sizing:border-box;width:100%;padding:12px;margin-top:6px;border-radius:9px;border:1px solid #53647d;font:inherit}input,select{background:#101b2e;color:white}button{cursor:pointer;background:#38b983;color:#082016;font-weight:700;border:0;margin-top:16px}.secondary{background:#334764;color:white}.hidden{display:none}.note{font-size:13px;color:#b7c6dc}#status{min-height:26px;white-space:pre-wrap}nav{display:flex;gap:8px}nav button{flex:1}
+</style>
+</head>
+<body><main>
+<h1>⛏️ Minecraft AI Bot Builder</h1>
+<label id="langLabel" for="language">שפת האתר</label><select id="language"><option value="he">עברית</option><option value="en">English</option><option value="ru">Русский</option></select>
+<p id="description">מערכת ניהול בוטים למיינקראפט</p>
+<section id="auth">
+<nav><button id="loginTab" type="button">כניסה</button><button id="signupTab" class="secondary" type="button">הרשמה</button></nav>
+<form id="authForm"><label id="emailLabel" for="email">אימייל</label><input id="email" type="email" autocomplete="email" required><label id="passwordLabel" for="password">סיסמה</label><input id="password" type="password" minlength="8" autocomplete="current-password" required><button id="submit" type="submit">כניסה</button></form>
+<button class="secondary" id="forgot" type="button">שכחתי סיסמה</button>
+</section>
+<section id="dashboard" class="hidden"><h2 id="welcome">לוח הבקרה</h2><p id="account"></p><p id="dashboardInfo">חיבור הבוטים עדיין בפיתוח. לא מופעלים בוטים דרך דף זה.</p><button id="logout">התנתקות</button></section>
+<p id="status" role="status" aria-live="polite"></p><p id="note" class="note">אין להזין כאן את סיסמת חשבון Minecraft. האתר מיועד לסיסמת אתר נפרדת בלבד.</p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// Paste only your public sb_publishable_ key below. Never paste secret/service_role keys.
+const SUPABASE_URL='https://jmwuxnfgcqwwgydkxehi.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_wfIwNriW8JyJW2c3qcyglA_GW-E7ywW';
+const i18n={
+he:{lang:'שפת האתר',description:'מערכת ניהול בוטים למיינקראפט',login:'כניסה',signup:'הרשמה',email:'אימייל',password:'סיסמה',forgot:'שכחתי סיסמה',welcome:'לוח הבקרה',info:'חיבור הבוטים עדיין בפיתוח. לא מופעלים בוטים דרך דף זה.',logout:'התנתקות',note:'אין להזין כאן את סיסמת חשבון Minecraft. האתר מיועד לסיסמת אתר נפרדת בלבד.',setup:'צריך להכניס קודם את המפתח הציבורי לקוד.',check:'אם ההרשמה הצליחה, בדוק את האימייל לאישור החשבון.',reset:'אם האימייל רשום, תישלח אליו הודעה לאיפוס הסיסמה.',enterEmail:'הכנס כתובת אימייל',error:'שגיאה: ',logged:'מחובר בתור: ',resetPrompt:'הכנס סיסמה חדשה (לפחות 8 תווים)',resetDone:'הסיסמה עודכנה.'},
+en:{lang:'Site language',description:'Minecraft bot management',login:'Log in',signup:'Sign up',email:'Email',password:'Password',forgot:'Forgot password',welcome:'Dashboard',info:'Bot connection is not implemented yet. This page does not run bots.',logout:'Log out',note:'Never enter your Minecraft account password here. Use a separate website password.',setup:'Add your public key to the code first.',check:'If sign-up succeeded, check your email to confirm your account.',reset:'If the email is registered, a password reset email will be sent.',enterEmail:'Enter your email',error:'Error: ',logged:'Signed in as: ',resetPrompt:'Enter a new password (at least 8 characters)',resetDone:'Password updated.'},
+ru:{lang:'Язык сайта',description:'Управление ботами Minecraft',login:'Вход',signup:'Регистрация',email:'Электронная почта',password:'Пароль',forgot:'Забыли пароль?',welcome:'Панель управления',info:'Подключение ботов пока не реализовано. Эта страница не запускает ботов.',logout:'Выйти',note:'Не вводите пароль от Minecraft. Используйте отдельный пароль для сайта.',setup:'Сначала добавьте публичный ключ в код.',check:'Если регистрация прошла успешно, подтвердите адрес по электронной почте.',reset:'Если адрес зарегистрирован, придёт письмо для сброса пароля.',enterEmail:'Введите адрес электронной почты',error:'Ошибка: ',logged:'Вы вошли как: ',resetPrompt:'Введите новый пароль (минимум 8 символов)',resetDone:'Пароль обновлён.'}};
+const $=id=>document.getElementById(id);let mode='login';let client;
+function t(){return i18n[$('language').value]}
+function status(s){$('status').textContent=s}
+function translate(){const x=t();document.documentElement.lang=$('language').value;document.documentElement.dir=$('language').value==='he'?'rtl':'ltr';for(const [id,key] of Object.entries({langLabel:'lang',description:'description',loginTab:'login',signupTab:'signup',emailLabel:'email',passwordLabel:'password',forgot:'forgot',welcome:'welcome',dashboardInfo:'info',logout:'logout',note:'note'}))$(id).textContent=x[key];$('submit').textContent=x[mode];$('loginTab').className=mode==='login'?'':'secondary';$('signupTab').className=mode==='signup'?'':'secondary';$('password').autocomplete=mode==='signup'?'new-password':'current-password'}
+$('language').addEventListener('change',translate);for(const m of ['login','signup'])$(m+'Tab').addEventListener('click',()=>{mode=m;translate();status('')});
+function configured(){if(!client){status(t().setup);return false}return true}
+function showUser(user){$('auth').classList.toggle('hidden',!!user);$('dashboard').classList.toggle('hidden',!user);$('account').textContent=user?t().logged+user.email:''}
+$('authForm').addEventListener('submit',async e=>{e.preventDefault();if(!configured())return;status('');const email=$('email').value.trim(),password=$('password').value;const {data,error}=mode==='signup'?await client.auth.signUp({email,password}):await client.auth.signInWithPassword({email,password});if(error){status(t().error+error.message);return}if(mode==='signup'){status(t().check)}else{showUser(data.user)}});
+$('forgot').addEventListener('click',async()=>{if(!configured())return;const email=$('email').value.trim()||prompt(t().enterEmail);if(!email)return;const {error}=await client.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});status(error?t().error+error.message:t().reset)});
+$('logout').addEventListener('click',async()=>{if(!configured())return;const {error}=await client.auth.signOut();if(error)status(t().error+error.message);else showUser(null)});
+async function init(){translate();if(SUPABASE_PUBLISHABLE_KEY==='PASTE_YOUR_PUBLISHABLE_KEY_HERE'||!window.supabase){status(t().setup);return}client=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);const {data:{session}}=await client.auth.getSession();showUser(session?.user||null);client.auth.onAuthStateChange(async(event,session)=>{showUser(session?.user||null);if(event==='PASSWORD_RECOVERY'){const password=prompt(t().resetPrompt);if(password&&password.length>=8){const {error}=await client.auth.updateUser({password});status(error?t().error+error.message:t().resetDone)}}})}init();
+</script></body></html>
