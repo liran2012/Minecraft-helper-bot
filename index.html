@@ -17,6 +17,24 @@
 <button class="secondary" id="forgot" type="button">שכחתי סיסמה</button>
 </section>
 <section id="dashboard" class="hidden"><h2 id="welcome">לוח הבקרה</h2><p id="account"></p><p id="dashboardInfo">חיבור הבוטים עדיין בפיתוח. לא מופעלים בוטים דרך דף זה.</p><button id="logout">התנתקות</button></section>
+  
+<section id="ownerPanel" class="hidden">
+  <h2>👑 Owner Panel</h2>
+  <p>ברוך הבא ללוח הניהול!</p>
+
+  <h3>👥 ניהול משתמשים</h3>
+  <p>ניהול משתמשים והרשאות VIP — בקרוב</p>
+
+  <h3>💎 חבילות VIP</h3>
+  <p>FREE: עד 2 בוטים פעילים</p>
+  <p>VIP: עד 7 בוטים פעילים</p>
+  <p>VIP חודשי: ₪4</p>
+  <p>VIP לכל החיים: ₪40</p>
+
+  <h3>🤖 ניהול בוטים</h3>
+  <p>ניהול בוטים פעילים — בקרוב</p>
+</section>
+
 <p id="status" role="status" aria-live="polite"></p><p id="note" class="note">אין להזין כאן את סיסמת חשבון Minecraft. האתר מיועד לסיסמת אתר נפרדת בלבד.</p>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -34,7 +52,27 @@ function status(s){$('status').textContent=s}
 function translate(){const x=t();document.documentElement.lang=$('language').value;document.documentElement.dir=$('language').value==='he'?'rtl':'ltr';for(const [id,key] of Object.entries({langLabel:'lang',description:'description',loginTab:'login',signupTab:'signup',emailLabel:'email',passwordLabel:'password',forgot:'forgot',welcome:'welcome',dashboardInfo:'info',logout:'logout',note:'note'}))$(id).textContent=x[key];$('submit').textContent=x[mode];$('loginTab').className=mode==='login'?'':'secondary';$('signupTab').className=mode==='signup'?'':'secondary';$('password').autocomplete=mode==='signup'?'new-password':'current-password'}
 $('language').addEventListener('change',translate);for(const m of ['login','signup'])$(m+'Tab').addEventListener('click',()=>{mode=m;translate();status('')});
 function configured(){if(!client){status(t().setup);return false}return true}
-function showUser(user){$('auth').classList.toggle('hidden',!!user);$('dashboard').classList.toggle('hidden',!user);$('account').textContent=user?t().logged+user.email:''}
+
+async function showUser(user) {
+  $('auth').classList.toggle('hidden', !!user);
+  $('dashboard').classList.toggle('hidden', !user);
+  $('account').textContent = user ? t().logged + user.email : '';
+
+  $('ownerPanel').classList.add('hidden');
+
+  if (!user || !client) return;
+
+  const { data, error } = await client
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!error && data?.role === 'owner') {
+    $('ownerPanel').classList.remove('hidden');
+  }
+}
+
 $('authForm').addEventListener('submit',async e=>{e.preventDefault();if(!configured())return;status('');const email=$('email').value.trim(),password=$('password').value;const {data,error}=mode==='signup'?await client.auth.signUp({email,password}):await client.auth.signInWithPassword({email,password});if(error){status(t().error+error.message);return}if(mode==='signup'){status(t().check)}else{showUser(data.user)}});
 $('forgot').addEventListener('click',async()=>{if(!configured())return;const email=$('email').value.trim()||prompt(t().enterEmail);if(!email)return;const {error}=await client.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});status(error?t().error+error.message:t().reset)});
 $('logout').addEventListener('click',async()=>{if(!configured())return;const {error}=await client.auth.signOut();if(error)status(t().error+error.message);else showUser(null)});
